@@ -250,7 +250,7 @@ class AudioDeviceNotificationClient : IMMNotificationClient
     public AudioDeviceNotificationClient(MMDeviceEnumerator enumerator, int delay)
     {
         deviceEnumerator = enumerator;
-        Delay = delay < 50 ? 50 : delay;
+        Delay = delay;        
     }
 
     // Метод для обработки смены устройства по умолчанию
@@ -282,7 +282,7 @@ class AudioDeviceNotificationClient : IMMNotificationClient
                 {
                     id = currentDevice.ID,
                     name = currentDevice.FriendlyName,
-                    volume = lastVolumeLevel * 100, // Громкость в процентах
+                    volume = Math.Round(lastVolumeLevel * 100), // Громкость в процентах
                     muted = currentDevice.AudioEndpointVolume.Mute
                 };
                 OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo));
@@ -325,7 +325,7 @@ class AudioDeviceNotificationClient : IMMNotificationClient
                 {
                     id = currentDevice.ID,
                     name = currentDevice.FriendlyName,
-                    volume = currentVolumeLevel * 100, // Громкость в процентах
+                    volume = Math.Round(lastVolumeLevel * 100), // Громкость в процентах
                     muted = currentDevice.AudioEndpointVolume.Mute
                 };
 
@@ -355,7 +355,7 @@ class AudioDeviceNotificationClient : IMMNotificationClient
             {
                 id = currentDevice.ID,
                 name = currentDevice.FriendlyName,
-                volume = newVolume * 100, // Громкость в процентах
+                volume = Math.Round(newVolume * 100), // Громкость в процентах
                 muted = volumeControl.Mute
             };
 
@@ -384,7 +384,7 @@ class AudioDeviceNotificationClient : IMMNotificationClient
             {
                 id = currentDevice.ID,
                 name = currentDevice.FriendlyName,
-                volume = newVolume * 100, // Громкость в процентах
+                volume = Math.Round(newVolume * 100), // Громкость в процентах
                 muted = volumeControl.Mute
             };
 
@@ -410,7 +410,7 @@ class Program
         int delay = 250;
         if (args.Length > 0 && int.TryParse(args[0], out int parsedDelay))
         {
-            delay = parsedDelay;
+            delay = parsedDelay < 100 ? 100 : parsedDelay;
         }
 
         // Создаем экземпляр DeviceEnumerator
