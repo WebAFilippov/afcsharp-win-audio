@@ -2,7 +2,7 @@
 using System.Timers;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
-using System.Text.Json;dsadas
+using System.Text.Json;
 
 class AudioDeviceNotificationClient : IMMNotificationClient
 {

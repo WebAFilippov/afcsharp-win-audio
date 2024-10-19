@@ -19,7 +19,7 @@
 ## Установка
 
 1. Установите необходимую версию .NET.
-
+  ```bash
   `dotnet build`
   `dotnet publish -c Release -r win-x64 --self-contained false`
 
