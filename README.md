@@ -20,10 +20,9 @@
 
 1. Установите необходимую версию .NET.
 
-   ```bash
   `dotnet build`
   `dotnet publish -c Release -r win-x64 --self-contained false`
-  ```
+
 
 - Это создаст .exe файл, который можно будет найти по следующему пути: `./bin/Debug/net6.0/win-x64/publish/afc#-win-audio.exe` (или `./bin/Release/net6.0/win-x64/publish/afc#-win-audio.exe` в зависимости от конфигурации сборки).
 
