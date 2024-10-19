@@ -11,8 +11,6 @@
 
 ## Требования
 
-## Требования
-
 - [.NET 6.0 или выше](https://dotnet.microsoft.com/download/dotnet/6.0).
 - Библиотека NAudio.
 
@@ -43,9 +41,9 @@
 
 ```json
 {
-  "id": "ID устройства.",
-  "name": "Название устройства.",
-  "volume": "Текущий уровень громкости в процентах.",
-  "muted": "Указывает, отключен ли звук (true/false)."
+  "id": "{0.0.0.00000000}.{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}",
+  "name": "Динамики (Realtek(R) Audio)",
+  "volume": 50.0,
+  "muted": false
 }
 ```
