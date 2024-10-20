@@ -1,0 +1,16 @@
+{
+  "name": "af-win-audio",
+  "module": "main.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/main.ts",
+    "build": "dotnet build",
+    "publish": "dotnet publish -c Release -r win-x64 --self-contained false"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

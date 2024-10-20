@@ -165,10 +165,7 @@ class Program
     static void Main(string[] args)
     {        
         int delay = Math.Max(int.TryParse(args[0], out int parsedDelay) ? parsedDelay : 250, 100);
-        int volumeStepPercent = int.TryParse(args[1], out int parsedStep) ? parsedStep < 0 ? 0 : parsedStep : 5;
-
-        Console.WriteLine(args[0] + " - " + args[1] + " - " + delay + " - " + volumeStepPercent);
-               
+        int volumeStepPercent = int.TryParse(args[1], out int parsedStep) ? parsedStep < 0 ? 0 : parsedStep : 5;       
 
         var enumerator = new MMDeviceEnumerator();
         var client = new AudioDeviceNotificationClient(enumerator, delay, volumeStepPercent);
@@ -200,35 +197,17 @@ class Program
             enumerator.UnregisterEndpointNotificationCallback(client);
         };
 
-        //Слушаем команды на входе
-        // if (args[1] == "upVolume")
-        // {
-        //     client.UpVolume();
-        // }
-        // if (args[0] == "upVolume")
-        // {
-        //     client.DownVolume();
-        // }
+        // Слушаем команды на входе
+        if (args[1] == "upVolume")
+        {
+            client.UpVolume();
+        }
+        if (args[0] == "upVolume")
+        {
+            client.DownVolume();
+        }     
 
-        while (true)
-            {
-                string? command = Console.ReadLine();
-                if (command == "upVolume")
-                {
-                    client.UpVolume();
-                }
-                else if (command == "downVolume")
-                {
-                    client.DownVolume();
-                }
-                else if (command == "exit")
-                {
-                    break; // Выход из программы
-                }
-            }
-
-
-        // Console.ReadLine();
+        Console.ReadLine();
         enumerator.UnregisterEndpointNotificationCallback(client);
     }
 }
