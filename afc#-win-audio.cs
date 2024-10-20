@@ -61,18 +61,20 @@ class AudioDeviceNotificationClient : IMMNotificationClient
     }
 
     // Метод для отслеживания изменений громкости
-    public void StartVolumeMonitoring(int delay)
+public void StartVolumeMonitoring(int delay)
+{
+    if (volumeCheckTimer != null)
     {
-        if (volumeCheckTimer != null)
-        {
-            volumeCheckTimer.Stop();
-            volumeCheckTimer.Dispose();
-        }
-
-        volumeCheckTimer = new System.Timers.Timer(delay);
-        volumeCheckTimer.Elapsed += CheckVolumeChange;
-        volumeCheckTimer.Start();
+        volumeCheckTimer.Stop();
+        volumeCheckTimer.Elapsed -= CheckVolumeChange; // Удалите обработчик события
+        volumeCheckTimer.Dispose(); // Освободите ресурсы таймера
+        volumeCheckTimer = null; // Установите в null для предотвращения утечек памяти
     }
+
+    volumeCheckTimer = new System.Timers.Timer(delay);
+    volumeCheckTimer.Elapsed += CheckVolumeChange;
+    volumeCheckTimer.Start();
+}
 
     // Метод для проверки изменений громкости
     private void CheckVolumeChange(object? sender, ElapsedEventArgs e)
@@ -163,8 +165,10 @@ class Program
     static void Main(string[] args)
     {        
         int delay = Math.Max(int.TryParse(args[0], out int parsedDelay) ? parsedDelay : 250, 100);
-        int volumeStepPercent = int.TryParse(args[1], out int parsedStep) ? parsedStep : 5;
-        
+        int volumeStepPercent = int.TryParse(args[1], out int parsedStep) ? parsedStep < 0 ? 0 : parsedStep : 5;
+
+        Console.WriteLine(args[0] + " - " + args[1] + " - " + delay + " - " + volumeStepPercent);
+               
 
         var enumerator = new MMDeviceEnumerator();
         var client = new AudioDeviceNotificationClient(enumerator, delay, volumeStepPercent);
@@ -181,18 +185,50 @@ class Program
         client.GetDeviceInfo(defaultDevice.ID, DataFlow.Render, Role.Multimedia);
         client.StartVolumeMonitoring(delay);
 
+        // Обработка сигналов завершения
+        Console.CancelKeyPress += (sender, e) =>
+        {
+            e.Cancel = true; // Отменяем завершение, чтобы выполнить код очистки
+            Console.WriteLine("Получен сигнал завершения. Завершение процесса...");
+            enumerator.UnregisterEndpointNotificationCallback(client);
+            Environment.Exit(0);
+        };
+
+        AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+        {
+            Console.WriteLine("Процесс завершается...");
+            enumerator.UnregisterEndpointNotificationCallback(client);
+        };
+
         //Слушаем команды на входе
-        if (args[1] == "upVolume")
-        {
-            client.UpVolume();
-        }
-        if (args[0] == "upVolume")
-        {
-            client.DownVolume();
-        }
+        // if (args[1] == "upVolume")
+        // {
+        //     client.UpVolume();
+        // }
+        // if (args[0] == "upVolume")
+        // {
+        //     client.DownVolume();
+        // }
+
+        while (true)
+            {
+                string? command = Console.ReadLine();
+                if (command == "upVolume")
+                {
+                    client.UpVolume();
+                }
+                else if (command == "downVolume")
+                {
+                    client.DownVolume();
+                }
+                else if (command == "exit")
+                {
+                    break; // Выход из программы
+                }
+            }
 
 
-        Console.ReadLine();
+        // Console.ReadLine();
         enumerator.UnregisterEndpointNotificationCallback(client);
     }
 }
