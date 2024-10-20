@@ -63,20 +63,20 @@ class AudioDeviceNotificationClient : IMMNotificationClient
     }
 
     // Метод для отслеживания изменений громкости
-public void StartVolumeMonitoring(int delay)
-{
-    if (volumeCheckTimer != null)
+    public void StartVolumeMonitoring(int delay)
     {
-        volumeCheckTimer.Stop();
-        volumeCheckTimer.Elapsed -= CheckVolumeChangeAndMutedStatus; // Удалите обработчик события
-        volumeCheckTimer.Dispose(); // Освободите ресурсы таймера
-        volumeCheckTimer = null; // Установите в null для предотвращения утечек памяти
-    }
+        if (volumeCheckTimer != null)
+        {
+            volumeCheckTimer.Stop();
+            volumeCheckTimer.Elapsed -= CheckVolumeChangeAndMutedStatus; // Удалите обработчик события
+            volumeCheckTimer.Dispose(); // Освободите ресурсы таймера
+            volumeCheckTimer = null; // Установите в null для предотвращения утечек памяти
+        }
 
-    volumeCheckTimer = new System.Timers.Timer(delay);
-    volumeCheckTimer.Elapsed += CheckVolumeChangeAndMutedStatus;
-    volumeCheckTimer.Start();
-}
+        volumeCheckTimer = new System.Timers.Timer(delay);
+        volumeCheckTimer.Elapsed += CheckVolumeChangeAndMutedStatus;
+        volumeCheckTimer.Start();
+    }
 
     // Метод для проверки изменений громкости
     private void CheckVolumeChangeAndMutedStatus(object? sender, ElapsedEventArgs e)
@@ -85,7 +85,7 @@ public void StartVolumeMonitoring(int delay)
         {
             float currentVolumeLevel = currentDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
             bool currentMuted = currentDevice.AudioEndpointVolume.Mute;
-        
+
             if (currentVolumeLevel != lastVolumeLevel || currentMuted != lastMutedStatus)
             {
                 lastVolumeLevel = currentVolumeLevel;
@@ -105,12 +105,12 @@ public void StartVolumeMonitoring(int delay)
     }
 
     // Метод для увеличения громкости
-    public void UpVolume()
+    public void UpVolume(float volumeStep)
     {
         if (currentDevice != null)
         {
             var volumeControl = currentDevice.AudioEndpointVolume;
-            float newVolume = volumeControl.MasterVolumeLevelScalar + VolumeStep;
+            float newVolume = volumeControl.MasterVolumeLevelScalar + volumeStep;
 
             if (newVolume > 1.0f)
             {
@@ -118,43 +118,23 @@ public void StartVolumeMonitoring(int delay)
             }
 
             volumeControl.MasterVolumeLevelScalar = newVolume;
-
-            var deviceInfo = new
-            {
-                id = currentDevice.ID,
-                name = currentDevice.FriendlyName,
-                volume = Math.Round(newVolume * 100), // Округление до целого
-                muted = volumeControl.Mute
-            };
-
-            OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo));
         }
     }
 
     // Метод для уменьшения громкости
-    public void DownVolume()
+    public void DownVolume(float volumeStep)
     {
         if (currentDevice != null)
         {
             var volumeControl = currentDevice.AudioEndpointVolume;
-            float newVolume = volumeControl.MasterVolumeLevelScalar - VolumeStep;
+            float newVolume = volumeControl.MasterVolumeLevelScalar - volumeStep;
 
             if (newVolume < 0f)
             {
                 newVolume = 0f;
             }
 
-            volumeControl.MasterVolumeLevelScalar = newVolume;
-
-            var deviceInfo = new
-            {
-                id = currentDevice.ID,
-                name = currentDevice.FriendlyName,
-                volume = Math.Round(newVolume * 100), // Округление до целого
-                muted = volumeControl.Mute
-            };
-
-            OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo));
+            volumeControl.MasterVolumeLevelScalar = newVolume;            
         }
     }
 
@@ -168,9 +148,9 @@ public void StartVolumeMonitoring(int delay)
 class Program
 {
     static void Main(string[] args)
-    {        
+    {
         int delay = Math.Max(int.TryParse(args[0], out int parsedDelay) ? parsedDelay : 250, 100);
-        int volumeStepPercent = int.TryParse(args[1], out int parsedStep) ? parsedStep < 0 ? 0 : parsedStep : 5;       
+        int volumeStepPercent = int.TryParse(args[1], out int parsedStep) ? parsedStep < 0 ? 0 : parsedStep : 5;
 
         var enumerator = new MMDeviceEnumerator();
         var client = new AudioDeviceNotificationClient(enumerator, delay, volumeStepPercent);
@@ -187,32 +167,57 @@ class Program
         client.GetDeviceInfo(defaultDevice.ID, DataFlow.Render, Role.Multimedia);
         client.StartVolumeMonitoring(delay);
 
-        // Обработка сигналов завершения
-        Console.CancelKeyPress += (sender, e) =>
-        {
-            e.Cancel = true; // Отменяем завершение, чтобы выполнить код очистки
-            Console.WriteLine("Получен сигнал завершения. Завершение процесса...");
-            enumerator.UnregisterEndpointNotificationCallback(client);
-            Environment.Exit(0);
-        };
+        // // Обработка сигналов завершения
+        // Console.CancelKeyPress += (sender, e) =>
+        // {
+        //     e.Cancel = true; // Отменяем завершение, чтобы выполнить код очистки
+        //     Console.WriteLine("Получен сигнал завершения. Завершение процесса...");
+        //     enumerator.UnregisterEndpointNotificationCallback(client);
+        //     Environment.Exit(0);
+        // };
 
-        AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-        {
-            Console.WriteLine("Процесс завершается...");
-            enumerator.UnregisterEndpointNotificationCallback(client);
-        };
+        // AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+        // {
+        //     Console.WriteLine("Процесс завершается...");
+        //     enumerator.UnregisterEndpointNotificationCallback(client);
+        // };
 
-        // Слушаем команды на входе
-        if (args[1] == "upVolume")
+        // Основной цикл командного интерфейса
+        try
         {
-            client.UpVolume();
+            while (true)
+            {
+                string? command = Console.ReadLine();
+
+                if (command != null)
+                {
+                    var parts = command.Split(' ');
+                    var action = parts[0];
+
+                    if (action == "upVolume")
+                    {
+                        var step = parts.Length == 2 ? int.Parse(parts[1]) / 100f : client.VolumeStep;
+                        client.UpVolume(step);
+                    }
+                    else if (action == "downVolume")
+                    {
+                        var step = parts.Length == 2 ? int.Parse(parts[1]) / 100f : client.VolumeStep;                        
+                        client.DownVolume(step);
+                    }
+                    else if (action == "exit")
+                    {
+                        break; // Завершение потока команд
+                    }
+                }
+            }
         }
-        if (args[0] == "upVolume")
+        finally
         {
-            client.DownVolume();
-        }     
-
-        Console.ReadLine();
-        enumerator.UnregisterEndpointNotificationCallback(client);
+            // Отключаем обратный вызов при завершении программы
+            enumerator.UnregisterEndpointNotificationCallback(client);
+            Console.WriteLine("Отписка от уведомлений произведена.");
+        }
     }
+
+
 }

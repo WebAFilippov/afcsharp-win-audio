@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>afc#-win-audio</AssemblyName>
-    <RootNamespace>afc#-win-audio</RootNamespace>
+    <AssemblyName>af-win-audio</AssemblyName>
+    <RootNamespace>af-win-audio</RootNamespace>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <PublishSingleFile>true</PublishSingleFile>
