@@ -9,6 +9,7 @@ class AudioDeviceNotificationClient : IMMNotificationClient
     private readonly MMDeviceEnumerator deviceEnumerator;
     private MMDevice? currentDevice;
     private float lastVolumeLevel;
+    private bool lastMutedStatus;
     private System.Timers.Timer? volumeCheckTimer;
     public int Delay { get; private set; }
     public float VolumeStep { get; private set; } // Свойство для шага изменения громкости
@@ -43,13 +44,14 @@ class AudioDeviceNotificationClient : IMMNotificationClient
             if (currentDevice != null)
             {
                 lastVolumeLevel = currentDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
+                lastMutedStatus = currentDevice.AudioEndpointVolume.Mute;
 
                 var deviceInfo = new
                 {
                     id = currentDevice.ID,
                     name = currentDevice.FriendlyName,
                     volume = Math.Round(lastVolumeLevel * 100), // Округление до целого
-                    muted = currentDevice.AudioEndpointVolume.Mute
+                    muted = lastMutedStatus
                 };
                 OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo));
             }
@@ -66,32 +68,35 @@ public void StartVolumeMonitoring(int delay)
     if (volumeCheckTimer != null)
     {
         volumeCheckTimer.Stop();
-        volumeCheckTimer.Elapsed -= CheckVolumeChange; // Удалите обработчик события
+        volumeCheckTimer.Elapsed -= CheckVolumeChangeAndMutedStatus; // Удалите обработчик события
         volumeCheckTimer.Dispose(); // Освободите ресурсы таймера
         volumeCheckTimer = null; // Установите в null для предотвращения утечек памяти
     }
 
     volumeCheckTimer = new System.Timers.Timer(delay);
-    volumeCheckTimer.Elapsed += CheckVolumeChange;
+    volumeCheckTimer.Elapsed += CheckVolumeChangeAndMutedStatus;
     volumeCheckTimer.Start();
 }
 
     // Метод для проверки изменений громкости
-    private void CheckVolumeChange(object? sender, ElapsedEventArgs e)
+    private void CheckVolumeChangeAndMutedStatus(object? sender, ElapsedEventArgs e)
     {
         if (currentDevice != null)
         {
             float currentVolumeLevel = currentDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
-            if (currentVolumeLevel != lastVolumeLevel)
+            bool currentMuted = currentDevice.AudioEndpointVolume.Mute;
+        
+            if (currentVolumeLevel != lastVolumeLevel || currentMuted != lastMutedStatus)
             {
                 lastVolumeLevel = currentVolumeLevel;
+                lastMutedStatus = currentMuted;
 
                 var deviceInfo = new
                 {
                     id = currentDevice.ID,
                     name = currentDevice.FriendlyName,
                     volume = Math.Round(currentVolumeLevel * 100), // Округление до целого
-                    muted = currentDevice.AudioEndpointVolume.Mute
+                    muted = currentMuted
                 };
 
                 OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo));
