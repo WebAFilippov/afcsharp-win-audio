@@ -25,11 +25,6 @@ export interface IChange {
 
 
 class AudioDeviceMonitor extends EventEmitter {
-  on(eventName: 'change', listener: (deviceInfo: IDevice, change: IChange) => void): this;
-  on(eventName: 'error', listener: (code: number) => void): this;
-  on(eventName: string | symbol, listener: (...args: any[]) => void): this {
-    return super.on(eventName, listener);
-  }
   // Определение процесса
   private audioDeviceProcess: ChildProcess | null = null;
   private exePath = path.join('bin', 'Release', 'net6.0', 'win-x64', 'afc#-win-audio.exe');
