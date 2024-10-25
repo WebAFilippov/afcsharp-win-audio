@@ -150,8 +150,14 @@ class AudioDeviceNotificationClient : IMMNotificationClient
     }
   }
 
-  public void SetDelay()
+  // Метод для установки задержки мониторинга
+  public void SetDelay(int delay)
   {
+    if (delay >= 100) // Минимальная проверка для безопасного интервала
+    {
+      Delay = delay;
+      StartVolumeMonitoring(Delay); // Перезапуск таймера с новым значением задержки
+    }
   }
 
   public void SetStepVolume(float stepVolume)
@@ -227,6 +233,10 @@ class Program
           }
           else if (action == "setDelay")
           {
+            if (parts.Length == 2 && int.TryParse(parts[1], out int newDelay))
+            {
+              client.SetDelay(newDelay);
+            }
           }
           else if (action == "setStepVolume")
           {
