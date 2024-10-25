@@ -153,18 +153,53 @@ class AudioDeviceNotificationClient : IMMNotificationClient
   // Метод для установки задержки мониторинга
   public void SetDelay(int delay)
   {
-    if (delay >= 100) // Минимальная проверка для безопасного интервала
+    if (currentDevice != null)
     {
-      Delay = delay;
-      StartVolumeMonitoring(Delay); // Перезапуск таймера с новым значением задержки
+      if (delay >= 100) // Минимальная проверка для безопасного интервала
+      {
+        Delay = delay;
+        StartVolumeMonitoring(Delay); // Перезапуск таймера с новым значением задержки
+      }
     }
   }
 
   public void SetStepVolume(float stepVolume)
   {
-    if (stepVolume >= 0 && stepVolume <= 100) // Проверяем, что значение в допустимом диапазоне
+
+    if (currentDevice != null)
     {
-      VolumeStep = stepVolume / 100f; // Преобразуем в десятичное значение
+      if (stepVolume >= 0 && stepVolume <= 100) // Проверяем, что значение в допустимом диапазоне
+      {
+        VolumeStep = stepVolume / 100f; // Преобразуем в десятичное значение
+      }
+    }
+  }
+
+  // Метод для включения Mute
+  public void Mute()
+  {
+    if (currentDevice != null)
+    {
+      currentDevice.AudioEndpointVolume.Mute = true;
+    }
+  }
+
+  // Метод для отключения Mute
+  public void UnMute()
+  {
+    if (currentDevice != null)
+    {
+      currentDevice.AudioEndpointVolume.Mute = false;
+    }
+  }
+
+  // Метод для переключения состояния Mute
+  public void ToggleMute()
+  {
+    if (currentDevice != null)
+    {
+      bool currentMuteState = currentDevice.AudioEndpointVolume.Mute;
+      currentDevice.AudioEndpointVolume.Mute = !currentMuteState;
     }
   }
 
@@ -244,6 +279,18 @@ class Program
             {
               client.SetStepVolume(stepVolume);
             }
+          }
+          if (action == "mute")
+          {
+            client.Mute();
+          }
+          else if (action == "unmute")
+          {
+            client.UnMute();
+          }
+          else if (action == "toggleMute")
+          {
+            client.ToggleMute();
           }
           else if (action == "exit")
           {
