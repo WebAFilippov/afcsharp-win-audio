@@ -1,387 +1,402 @@
-﻿using System;
-using System.Timers;
-using NAudio.CoreAudioApi;
-using NAudio.CoreAudioApi.Interfaces;
+﻿// using System;
+// using System.Linq;
+// using System.Text.Json;
+// using System.Text.Encodings.Web;
+// using System.Text.Unicode;
+// using System.Threading;
+// using System.Threading.Tasks;
+// using NAudio.CoreAudioApi;
+// using NAudio.CoreAudioApi.Interfaces;
+// using System.Diagnostics;
+// using System.Collections.Generic;
+
+// class AudioDeviceInfo
+// {
+//     public string Id { get; set; } = string.Empty;
+//     public string Name { get; set; } = string.Empty;
+//     public string DataFlow { get; set; } = string.Empty;
+//     public bool IsDefault { get; set; }
+//     public float Volume { get; set; }
+//     public bool IsMuted { get; set; }
+//     public int Channels { get; set; }
+//     public int BitDepth { get; set; }
+//     public int SampleRate { get; set; }
+// }
+
+// class AudioDeviceNotificationClient : IMMNotificationClient
+// {
+//     private static MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
+//     public event Action<AudioVolumeNotificationData> OnVolumeNotification = delegate { };
+
+//     private static List<AudioDeviceInfo> previousDevices = new List<AudioDeviceInfo>();
+//     private Dictionary<string, AudioEndpointVolume> deviceVolumeListeners = new Dictionary<string, AudioEndpointVolume>();
+
+//     public void OnDefaultDeviceChanged(DataFlow flow, Role role, string deviceId)
+//     {
+//         // Console.WriteLine($"[{DateTime.Now}] OnDefaultDeviceChanged - Flow: {flow}, Role: {role}, DeviceId: {deviceId}");
+//         // CheckDevices(new[] { "default" });
+//     }
+
+//     public void OnDeviceAdded(string deviceId)
+//     {
+//         // Console.WriteLine($"[{DateTime.Now}] OnDeviceAdded - DeviceId: {deviceId}");
+//         // CheckDevices(new[] { "add" });
+//     }
+
+//     public void OnDeviceRemoved(string deviceId)
+//     {
+//         // Console.WriteLine($"[{DateTime.Now}] OnDeviceRemoved - DeviceId: {deviceId}");
+//         // CheckDevices(new[] { "remove" });
+//     }
+
+//     public void OnDeviceStateChanged(string deviceId, DeviceState newState)
+//     {
+//         Console.WriteLine($"[{DateTime.Now}] OnDeviceStateChanged - DeviceId: {deviceId}, NewState: {newState}");
+//         try
+//         {
+//             if ((newState & DeviceState.Active) == DeviceState.Active)
+//             {
+//                 CheckDevices(new[] { "add" });
+
+//                 var device = enumerator.GetDevice(deviceId);
+//                 if (device?.AudioEndpointVolume != null)
+//                 {
+//                     deviceVolumeListeners[deviceId] = device.AudioEndpointVolume;
+//                     device.AudioEndpointVolume.OnVolumeNotification += VolumeNotificationHandler;
+//                 }
+//             }
+
+//             if ((newState & (DeviceState.Disabled | DeviceState.NotPresent | DeviceState.Unplugged)) != 0)
+//             {
+//                 if (deviceVolumeListeners.ContainsKey(deviceId))
+//                 {
+//                     var audioEndpointVolume = deviceVolumeListeners[deviceId];
+//                     audioEndpointVolume.OnVolumeNotification -= VolumeNotificationHandler;
+//                     deviceVolumeListeners.Remove(deviceId);
+//                 }
+
+//                 CheckDevices(new[] { "remove" });
+//             }
+//         }
+//         catch (Exception ex)
+//         {
+//             Console.WriteLine($"[{DateTime.Now}] ERROR in OnDeviceStateChanged: {ex.Message}");
+//             Console.WriteLine(ex.StackTrace);
+//         }
+//     }
+
+//     public void OnPropertyValueChanged(string deviceId, PropertyKey key)
+//     {
+//         Console.WriteLine($"[{DateTime.Now}] OnPropertyValueChanged - DeviceId: {deviceId}, PropertyKey: {key}");
+//     }
+
+//     public void InitializeDevices()
+//     {
+//         Console.WriteLine($"[{DateTime.Now}] Initializing devices...");
+//         try
+//         {
+//             var devices = enumerator.EnumerateAudioEndPoints(DataFlow.All, DeviceState.Active).ToList();
+//             previousDevices = devices.Select(device => GetDeviceInfo(device)).ToList();
+//             PrintDevices(previousDevices, new[] { "initial" });
+
+//             foreach (var device in devices)
+//             {
+//                 if (device.AudioEndpointVolume != null)
+//                 {
+//                     deviceVolumeListeners[device.ID] = device.AudioEndpointVolume;
+//                     device.AudioEndpointVolume.OnVolumeNotification += VolumeNotificationHandler;
+//                 }
+//             }
+//         }
+//         catch (Exception ex)
+//         {
+//             Console.WriteLine($"[{DateTime.Now}] ERROR in InitializeDevices: {ex.Message}");
+//             Console.WriteLine(ex.StackTrace);
+//         }
+//     }
+
+//     private static void CheckDevices(string[] action)
+//     {
+//         Console.WriteLine($"[{DateTime.Now}] Checking devices - Action: {string.Join(", ", action)}");
+//         try
+//         {
+//             var devices = enumerator.EnumerateAudioEndPoints(DataFlow.All, DeviceState.Active).ToList();
+//             var currentDevices = devices.Select(device => GetDeviceInfo(device)).ToList();
+
+//             if (previousDevices.SequenceEqual(currentDevices)) return;
+
+//             PrintDevices(currentDevices, action);
+//             previousDevices = currentDevices;
+//         }
+//         catch (Exception ex)
+//         {
+//             Console.WriteLine($"[{DateTime.Now}] ERROR in CheckDevices: {ex.Message}");
+//             Console.WriteLine(ex.StackTrace);
+//         }
+//     }
+
+
+//     private static AudioDeviceInfo GetDeviceInfo(MMDevice device)
+//     {
+
+//             var deviceInfo = new AudioDeviceInfo
+//             {
+//                 Id = device.ID,
+//                 Name = device.FriendlyName,
+//                 DataFlow = device.DataFlow.ToString()
+//             };
+
+//             var defaultDevice = enumerator.GetDefaultAudioEndpoint(device.DataFlow, Role.Multimedia);
+//             deviceInfo.IsDefault = defaultDevice != null && defaultDevice.ID == device.ID;
+
+//             if (device.State == DeviceState.Active && device.AudioEndpointVolume != null)
+//             {
+//                 deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
+//                 deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
+
+//                 if (device.AudioClient?.MixFormat != null)
+//                 {
+//                     deviceInfo.Channels = device.AudioClient.MixFormat.Channels;
+//                     deviceInfo.BitDepth = device.AudioClient.MixFormat.BitsPerSample;
+//                     deviceInfo.SampleRate = device.AudioClient.MixFormat.SampleRate;
+//                 }
+//             }
+//             return deviceInfo;
+//     }
+
+//     private static void PrintDevices(List<AudioDeviceInfo> devices, string[] action)
+//     {
+//         var options = new JsonSerializerOptions
+//         {
+//             Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+//             WriteIndented = true
+//         };
+
+//         var response = new
+//         {
+//             data = devices,
+//             action = action
+//         };
+
+//         Console.WriteLine(JsonSerializer.Serialize(response, options));
+//     }
+
+//     private void VolumeNotificationHandler(AudioVolumeNotificationData notificationData)
+//     {
+//         Console.WriteLine($"[{DateTime.Now}] Volume notification received - Volume: {notificationData.MasterVolume}, Muted: {notificationData.Muted}");
+//         OnVolumeNotification?.Invoke(notificationData);
+//         CheckDevices(new[] { "volume" });
+//     }
+// }
+
+// class Program
+// {
+//     public static async Task Main(string[] args)
+//     {
+//         try
+//         {
+//             var notificationClient = new AudioDeviceNotificationClient();
+//             MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
+//             enumerator.RegisterEndpointNotificationCallback(notificationClient);
+
+//             notificationClient.InitializeDevices();
+
+//             await Task.Delay(Timeout.Infinite);
+//         }
+//         catch (Exception ex)
+//         {
+//             Console.WriteLine($"[{DateTime.Now}] FATAL ERROR: {ex.Message}");
+//             Console.WriteLine(ex.StackTrace);
+//         }
+//         finally
+//         {
+//             Console.WriteLine("Exiting application.");
+//         }
+//     }
+// }
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
+using System.Threading;
+using NAudio.CoreAudioApi;
+using NAudio.CoreAudioApi.Interfaces;
 
-class AudioDeviceNotificationClient : IMMNotificationClient
+public class AudioDeviceInfo
 {
-    private readonly MMDeviceEnumerator deviceEnumerator;
-    private MMDevice? currentDevice;
-    private float lastVolumeLevel;
-    private bool lastMutedStatus;
-    private System.Timers.Timer? volumeCheckTimer;
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public DataFlow DataFlow { get; set; }
+    public bool IsDefault { get; set; }
+    public float Volume { get; set; }
+    public bool IsMuted { get; set; }
+    public int Channels { get; set; }
+    public int BitDepth { get; set; }
+    public int SampleRate { get; set; }
+    public MMDevice? Device { get; set; }
+}
 
-    public int Delay { get; private set; }
-    public float VolumeStep { get; private set; } // Свойство для шага изменения громкости
+class AudioDeviceNotificationClient : IMMNotificationClient, IDisposable
+{
+    private readonly MMDeviceEnumerator _enumerator = new MMDeviceEnumerator();
+    public event Action<AudioVolumeNotificationData> OnVolumeNotification = delegate { };
 
-    // Событие для уведомления об изменении громкости устройства
-    public event Action<string>? OnVolumeChanged;
+    private readonly Dictionary<string, AudioDeviceInfo> _devices = new Dictionary<string, AudioDeviceInfo>();
+    private readonly object _lock = new object();
 
-    public AudioDeviceNotificationClient(MMDeviceEnumerator enumerator, int delay, int volumeStepPercent)
+    public void OnDefaultDeviceChanged(DataFlow flow, Role role, string deviceId)
     {
-        deviceEnumerator = enumerator;
-        Delay = delay;
-        VolumeStep = volumeStepPercent / 100f; // Преобразование процента в десятичную дробь
-    }
-
-    // Метод для обработки смены устройства по умолчанию
-    public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
-    {
-        if (flow == DataFlow.Render && role == Role.Multimedia)
+        lock (_lock)
         {
-            GetDeviceInfo(defaultDeviceId, flow, role);
-            StartVolumeMonitoring(Delay);
-        }
-    }
-
-    // Метод для получения информации об устройстве
-    public void GetDeviceInfo(string deviceId, DataFlow flow, Role role)
-    {
-        try
-        {
-            currentDevice = deviceEnumerator.GetDevice(deviceId);
-            if (currentDevice != null)
+            foreach (var deviceInfo in _devices.Values)
             {
-                lastVolumeLevel = currentDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
-                lastMutedStatus = currentDevice.AudioEndpointVolume.Mute;
-
-                var deviceInfo = new
-                {
-                    id = currentDevice.ID,
-                    name = currentDevice.FriendlyName,
-                    volume = Math.Round(lastVolumeLevel * 100), // Округление до целого
-                    muted = lastMutedStatus
-                };
-                var options = new JsonSerializerOptions
-                {
-                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic),
-                    WriteIndented = true
-                };
-                OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo, options));
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка при получении информации об устройстве: {ex.Message}");
-        }
-    }
-
-    // Метод для отслеживания изменений громкости
-    public void StartVolumeMonitoring(int delay)
-    {
-        if (volumeCheckTimer != null)
-        {
-            volumeCheckTimer.Stop();
-            volumeCheckTimer.Elapsed -= CheckVolumeChangeAndMutedStatus; // Удалите обработчик события
-            volumeCheckTimer.Dispose(); // Освободите ресурсы таймера
-            volumeCheckTimer = null; // Установите в null для предотвращения утечек памяти
-        }
-
-        volumeCheckTimer = new System.Timers.Timer(delay);
-        volumeCheckTimer.Elapsed += CheckVolumeChangeAndMutedStatus;
-        volumeCheckTimer.Start();
-    }
-
-    // Метод для проверки изменений громкости
-    private void CheckVolumeChangeAndMutedStatus(object? sender, ElapsedEventArgs e)
-    {
-        if (currentDevice != null)
-        {
-            float currentVolumeLevel = currentDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
-            bool currentMuted = currentDevice.AudioEndpointVolume.Mute;
-
-            if (currentVolumeLevel != lastVolumeLevel || currentMuted != lastMutedStatus)
-            {
-                lastVolumeLevel = currentVolumeLevel;
-                lastMutedStatus = currentMuted;
-
-                var deviceInfo = new
-                {
-                    id = currentDevice.ID,
-                    name = currentDevice.FriendlyName,
-                    volume = Math.Round(currentVolumeLevel * 100), // Округление до целого
-                    muted = currentMuted
-                };
-
-                var options = new JsonSerializerOptions
-                {
-                    Encoder = JavaScriptEncoder.Create(UnicodeRanges.BasicLatin, UnicodeRanges.Cyrillic),
-                    WriteIndented = true
-                };
-                OnVolumeChanged?.Invoke(JsonSerializer.Serialize(deviceInfo, options));
+                deviceInfo.IsDefault = deviceInfo.DataFlow == flow && deviceInfo.Id == deviceId;
             }
         }
     }
 
-    // Метод для увеличения громкости
-    public void UpVolume(float volumeStep)
+    public void OnDeviceAdded(string deviceId)
     {
-        if (currentDevice != null)
+        // var device = _enumerator.GetDevice(deviceId);
+        // if (device == null || device.State != DeviceState.Active)
+        //     return;
+
+        // var deviceInfo = new AudioDeviceInfo
+        // {
+        //     Id = device.ID,
+        //     Name = device.FriendlyName,
+        //     DataFlow = device.DataFlow,
+        //     Device = device
+        // };
+
+        // if (device.AudioEndpointVolume != null)
+        // {
+        //     deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
+        //     deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
+        //     device.AudioEndpointVolume.OnVolumeNotification += VolumeNotificationHandler;
+
+        //     _volumeToDeviceId[device.AudioEndpointVolume] = device.ID;
+        // }
+
+        // if (device.AudioClient != null && device.AudioClient.MixFormat != null)
+        // {
+        //     deviceInfo.Channels = device.AudioClient.MixFormat.Channels;
+        //     deviceInfo.BitDepth = device.AudioClient.MixFormat.BitsPerSample;
+        //     deviceInfo.SampleRate = device.AudioClient.MixFormat.SampleRate;
+        // }
+
+        // lock (_lock)
+        // {
+        //     _devices[device.ID] = deviceInfo;
+        // }
+    }
+
+    public void OnDeviceRemoved(string deviceId)
+    {
+        // lock (_lock)
+        // {
+        //     if (_devices.ContainsKey(deviceId))
+        //     {
+        //         var deviceInfo = _devices[deviceId];
+        //         if (deviceInfo.Device != null && deviceInfo.Device.AudioEndpointVolume != null)
+        //         {
+        //             deviceInfo.Device.AudioEndpointVolume.OnVolumeNotification -= VolumeNotificationHandler;
+        //             _volumeToDeviceId.Remove(deviceInfo.Device.AudioEndpointVolume);
+        //         }
+        //         _devices.Remove(deviceId);
+        //     }
+        // }
+    }
+
+    public void OnDeviceStateChanged(string deviceId, DeviceState newState)
+    {
+        // var device = _enumerator.GetDevice(deviceId);
+        // if (device == null)
+        //     return;
+
+        // if (newState == DeviceState.Active)
+        // {
+        //     OnDeviceAdded(deviceId);
+        // }
+        // else if (newState == DeviceState.Disabled || newState == DeviceState.NotPresent || newState == DeviceState.Unplugged)
+        // {
+        //     OnDeviceRemoved(deviceId);
+        // }
+    }
+
+    public void OnPropertyValueChanged(string deviceId, PropertyKey key)
+    {
+        // Handle property value changes if necessary
+    }
+
+    public void InitializeDevices()
+    {
+        var devices = _enumerator.EnumerateAudioEndPoints(DataFlow.All, DeviceState.Active).ToList();
+
+        foreach (var device in devices)
         {
-            try
+            var deviceInfo = new AudioDeviceInfo
             {
-                var volumeControl = currentDevice.AudioEndpointVolume;
-                float newVolume = volumeControl.MasterVolumeLevelScalar + volumeStep;
+                Id = device.ID,
+                Name = device.FriendlyName,
+                DataFlow = device.DataFlow,
+                Device = device
+            };
 
-                if (newVolume > 1.0f)
-                {
-                    newVolume = 1.0f;
-                }
-
-                volumeControl.MasterVolumeLevelScalar = newVolume;
+            if (device.AudioEndpointVolume != null)
+            {
+                deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
+                deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
+                device.AudioEndpointVolume.OnVolumeNotification += (data) => VolumeNotificationHandler(device.ID, data);
             }
-            catch (Exception ex)
+
+            if (device.AudioClient != null && device.AudioClient.MixFormat != null)
             {
-                Console.WriteLine($"Ошибка при увеличении громкости: {ex.Message}");
+                deviceInfo.Channels = device.AudioClient.MixFormat.Channels;
+                deviceInfo.BitDepth = device.AudioClient.MixFormat.BitsPerSample;
+                deviceInfo.SampleRate = device.AudioClient.MixFormat.SampleRate;
+            }
+
+            lock (_lock)
+            {
+                _devices[device.ID] = deviceInfo;
             }
         }
     }
 
-    // Метод для уменьшения громкости
-    public void DownVolume(float volumeStep)
+    private void VolumeNotificationHandler(string deviceID, AudioVolumeNotificationData e)
     {
-        if (currentDevice != null)
-        {
-            try
-            {
-                var volumeControl = currentDevice.AudioEndpointVolume;
-                float newVolume = volumeControl.MasterVolumeLevelScalar - volumeStep;
-
-                if (newVolume < 0f)
-                {
-                    newVolume = 0f;
-                }
-
-                volumeControl.MasterVolumeLevelScalar = newVolume;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при уменьшении громкости: {ex.Message}");
-            }
-        }
+        _devices[deviceID].Volume = e.MasterVolume * 100;
+        _devices[deviceID].IsMuted = e.Muted;
+        Console.WriteLine(_devices[deviceID].Name);
+        Console.WriteLine(_devices[deviceID].Volume);
+        Console.WriteLine(_devices[deviceID].IsMuted);
     }
 
-    // Метод для установки задержки мониторинга
-    public void SetDelay(int delay)
+    public void Dispose()
     {
-        if (currentDevice != null)
-        {
-            if (delay >= 100) // Минимальная проверка для безопасного интервала
-            {
-                Delay = delay;
-                StartVolumeMonitoring(Delay); // Перезапуск таймера с новым значением задержки
-            }
-        }
+        _devices.Clear();
+        _enumerator.UnregisterEndpointNotificationCallback(this);
     }
-
-    public void SetStepVolume(float stepVolume)
-    {
-        if (currentDevice != null)
-        {
-            if (stepVolume >= 0 && stepVolume <= 100) // Проверяем, что значение в допустимом диапазоне
-            {
-                VolumeStep = stepVolume / 100f; // Преобразуем в десятичное значение
-            }
-        }
-    }
-
-    // Метод для включения Mute
-    public void Mute()
-    {
-        if (currentDevice != null)
-        {
-            try
-            {
-                currentDevice.AudioEndpointVolume.Mute = true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при отключении звука: {ex.Message}");
-            }
-        }
-    }
-
-    // Метод для отключения Mute
-    public void UnMute()
-    {
-        if (currentDevice != null)
-        {
-            try
-            {
-                currentDevice.AudioEndpointVolume.Mute = false;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при включении звука: {ex.Message}");
-            }
-        }
-    }
-
-    // Метод для переключения состояния Mute
-    public void ToggleMute()
-    {
-        if (currentDevice != null)
-        {
-            try
-            {
-                bool currentMuteState = currentDevice.AudioEndpointVolume.Mute;
-                currentDevice.AudioEndpointVolume.Mute = !currentMuteState;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка при переключении звука: {ex.Message}");
-            }
-        }
-    }
-
-    // Метод для получения списка доступных устройств
-    public void ListAudioDevices()
-    {
-        try
-        {
-            var devices = deviceEnumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active);
-            foreach (var device in devices)
-            {
-                Console.WriteLine($"Device ID: {device.ID}, Friendly Name: {device.FriendlyName}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка при получении списка устройств: {ex.Message}");
-        }
-    }
-
-    // Метод для установки устройства по умолчанию
-    public void SetDefaultAudioDevice(string deviceId)
-    {
-        // Здесь необходимо использовать IPolicyConfig или другой механизм для установки устройства по умолчанию
-        // В данном примере не реализовано, но это может потребовать P/Invoke
-        try
-        {
-            // Ваша реализация для установки устройства по умолчанию
-            Console.WriteLine($"Устройство по умолчанию установлено: {deviceId}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Ошибка при установке устройства по умолчанию: {ex.Message}");
-        }
-    }
-
-    // Пустые реализации для ненужных методов
-    public void OnDeviceStateChanged(string deviceId, DeviceState newState) { }
-    public void OnDeviceAdded(string pwstrDeviceId) { }
-    public void OnDeviceRemoved(string deviceId) { }
-    public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
 }
 
 class Program
 {
-    static void Main(string[] args)
+    public static void Main()
     {
-        // Проверяем, переданы ли аргументы командной строки
-        int delay = 250; // Значение по умолчанию для задержки
-        int volumeStepPercent = 5; // Значение по умолчанию для шага громкости
-
-        // Проверяем, есть ли хотя бы один аргумент
-        if (args.Length > 0 && int.TryParse(args[0], out int parsedDelay))
+        using (var notificationClient = new AudioDeviceNotificationClient())
         {
-            delay = Math.Max(parsedDelay, 75); // Минимальная задержка 100 мс
-        }
+            var enumerator = new MMDeviceEnumerator();
+            enumerator.RegisterEndpointNotificationCallback(notificationClient);
 
-        // Проверяем, есть ли второй аргумент
-        if (args.Length > 1 && int.TryParse(args[1], out int parsedVolumeStep))
-        {
-            volumeStepPercent = Math.Clamp(parsedVolumeStep, 1, 100); // Ограничиваем шаг громкости от 1 до 100
-        }
+            notificationClient.InitializeDevices();
 
-        var enumerator = new MMDeviceEnumerator();
-        var client = new AudioDeviceNotificationClient(enumerator, delay, volumeStepPercent);
-
-        // Подписываемся на события изменения громкости
-        client.OnVolumeChanged += (deviceInfoJson) =>
-        {
-            Console.WriteLine(deviceInfoJson);
-        };
-
-        // Регистрируем уведомления
-        enumerator.RegisterEndpointNotificationCallback(client);
-
-        MMDevice defaultDevice = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-
-        client.GetDeviceInfo(defaultDevice.ID, DataFlow.Render, Role.Multimedia);
-        client.StartVolumeMonitoring(delay);
-
-        try
-        {
-            while (true)
-            {
-                string? input = Console.ReadLine();
-                var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length == 0) continue;
-
-                var action = parts[0].ToLowerInvariant();
-                if (action == "upvolume")
-                {
-                    var value = parts.Length == 2 ? int.Parse(parts[1]) / 100f : client.VolumeStep;
-                    client.UpVolume(value);
-                }
-                else if (action == "downvolume")
-                {
-                    var value = parts.Length == 2 ? int.Parse(parts[1]) / 100f : client.VolumeStep;
-                    client.DownVolume(value);
-                }
-                else if (action == "setdelay")
-                {
-                    if (parts.Length == 2 && int.TryParse(parts[1], out int newDelay))
-                    {
-                        client.SetDelay(newDelay);
-                    }
-                }
-                else if (action == "setstepvolume")
-                {
-                    if (parts.Length == 2 && float.TryParse(parts[1], out float stepVolume))
-                    {
-                        client.SetStepVolume(stepVolume);
-                    }
-                }
-                else if (action == "mute")
-                {
-                    client.Mute();
-                }
-                else if (action == "unmute")
-                {
-                    client.UnMute();
-                }
-                else if (action == "togglemute")
-                {
-                    client.ToggleMute();
-                }
-                else if (action == "listdevices")
-                {
-                    client.ListAudioDevices();
-                }
-                else if (action == "setdefaultdevice" && parts.Length == 2)
-                {
-                    client.SetDefaultAudioDevice(parts[1]);
-                }
-                else if (action == "exit")
-                {
-                    break; // Завершение потока команд
-                }
-                else
-                {
-                    Console.WriteLine("Неизвестная команда. Попробуйте еще раз.");
-                }
-            }
-        }
-        finally
-        {
-            // Отключаем обратный вызов при завершении программы.
-            enumerator.UnregisterEndpointNotificationCallback(client);
-            Console.WriteLine("Отписка от уведомлений произведена.");
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey();
         }
     }
 }
