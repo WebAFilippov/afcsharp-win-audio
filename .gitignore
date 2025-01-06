@@ -1,7 +1,8 @@
 bin/
 obj/
 node_modules/
-src/
 tsconfig.json
 bun.lockb
 package.json
+.vscode/
+.vs/
