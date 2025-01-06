@@ -15,7 +15,7 @@ class AudioMonitor extends EventEmitter {
     super()
     this.options = options
 
-    this.execPath = path.join(__dirname, '..', 'bin', 'Release', 'net6.0', 'win-x64', 'publish', 'AudioManager.exe');
+    this.execPath = path.join(__dirname, '..', 'bin', 'Release', 'net6.0', 'win-x64', 'publish', 'af-win-audio.exe');
 
     if (this.options.autoStart) {
       this.start()

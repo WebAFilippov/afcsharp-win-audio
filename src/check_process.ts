@@ -2,7 +2,7 @@ import { getProcessesByName } from 'node-processlist';
 
 setInterval(() => {
   (async () => {
-    const processes = await getProcessesByName('AudioManager.exe');
+    const processes = await getProcessesByName('af-win-audio.exe');
     console.log("=====================================");
     console.log(processes);
     console.log("=====================================");
