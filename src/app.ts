@@ -35,6 +35,7 @@ class AudioMonitor extends EventEmitter {
         this.process.stdout.on('data', (dataBuffer: Buffer) => {
           try {
             const data = JSON.parse(dataBuffer.toString())
+
             this.emit('listen', {
               action: data.action,
               devices: data.devices
@@ -141,13 +142,13 @@ class AudioMonitor extends EventEmitter {
 
   public toggleMuted() {
     if (this.process && this.process.stdin) {
-      this.process.stdin.write('togglemuted\n')
+      this.process.stdin.write('togglemute\n')
     }
   }
 
   public toggleMutedById(deviceId: string) {
     if (this.process && this.process.stdin) {
-      this.process.stdin.write(`togglemutedid ${deviceId}\n`)
+      this.process.stdin.write(`togglemuteid ${deviceId}\n`)
     }
   }
 }

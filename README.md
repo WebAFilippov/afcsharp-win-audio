@@ -36,7 +36,7 @@ git clone https://github.com/WebAFilippov/afcsharp-win-audio.git
 ```
 3. Перейдите в директорию проекта: 
 ``` bash
-  cd afcsharp-win-audio
+cd afcsharp-win-audio
 ```
 4. Соберите проект: 
 ``` bash

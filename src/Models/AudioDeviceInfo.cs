@@ -13,6 +13,5 @@ namespace AudioManager.Models
         public int Channels { get; set; }
         public int BitDepth { get; set; }
         public int SampleRate { get; set; }
-        public MMDevice? Device { get; set; }
     }
 } 
