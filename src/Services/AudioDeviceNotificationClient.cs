@@ -15,9 +15,9 @@ namespace AudioManager.Services
     {
         private readonly MMDeviceEnumerator _enumerator = new();
         private readonly Dictionary<string, AudioDeviceInfo> _devices = new();
-        private readonly Dictionary<string, AudioEndpointVolumeNotificationDelegate> _listeners = new();
         private readonly object _lock = new();
         private float _stepVolume = 2f;
+        private readonly Dictionary<string, (AudioEndpointVolumeNotificationDelegate Delegate, AudioEndpointVolume Volume)> _volumeNotificationDelegates = new();
 
         public event Action<string> OnDeviceChanged = delegate { };
 
@@ -25,7 +25,7 @@ namespace AudioManager.Services
         {
             if (value <= 0 || value > 100)
             {
-                Console.Error.WriteLine("Step volume must be between 0 and 100");
+                // Console.Error.WriteLine("Step volume must be between 0 and 100");
                 return;
             }
             _stepVolume = value;
@@ -43,7 +43,7 @@ namespace AudioManager.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error setting mute: {ex.Message}");
+                // Console.Error.WriteLine($"Error setting mute: {ex.Message}");
             }
         }
 
@@ -58,7 +58,7 @@ namespace AudioManager.Services
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Device with ID {deviceId} not found");
+                    // Console.Error.WriteLine($"Device with ID {deviceId} not found");
                 }
             }
         }
@@ -75,7 +75,7 @@ namespace AudioManager.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error setting unmute: {ex.Message}");
+                // Console.Error.WriteLine($"Error setting unmute: {ex.Message}");
             }
         }
 
@@ -90,7 +90,7 @@ namespace AudioManager.Services
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Device with ID {deviceId} not found");
+                    // Console.Error.WriteLine($"Device with ID {deviceId} not found");
                 }
             }
         }
@@ -108,7 +108,7 @@ namespace AudioManager.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error toggling mute: {ex.Message}");
+                // Console.Error.WriteLine($"Error toggling mute: {ex.Message}");
             }
         }
 
@@ -124,7 +124,7 @@ namespace AudioManager.Services
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Device with ID {deviceId} not found");
+                    // Console.Error.WriteLine($"Device with ID {deviceId} not found");
                 }
             }
         }
@@ -143,7 +143,7 @@ namespace AudioManager.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error incrementing volume: {ex.Message}");
+                // Console.Error.WriteLine($"Error incrementing volume: {ex.Message}");
             }
         }
 
@@ -161,7 +161,7 @@ namespace AudioManager.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error decrementing volume: {ex.Message}");
+                // Console.Error.WriteLine($"Error decrementing volume: {ex.Message}");
             }
         }
 
@@ -178,7 +178,7 @@ namespace AudioManager.Services
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Device with ID {deviceId} not found");
+                    // Console.Error.WriteLine($"Device with ID {deviceId} not found");
                 }
             }
         }
@@ -196,7 +196,7 @@ namespace AudioManager.Services
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Device with ID {deviceId} not found");
+                    // Console.Error.WriteLine($"Device with ID {deviceId} not found");
                 }
             }
         }
@@ -205,7 +205,7 @@ namespace AudioManager.Services
         {
             if (value < 0 || value > 100)
             {
-                Console.Error.WriteLine("Volume must be between 0 and 100");
+                // Console.Error.WriteLine("Volume must be between 0 and 100");
                 return;
             }
 
@@ -217,9 +217,9 @@ namespace AudioManager.Services
                     defaultDevice.AudioEndpointVolume.MasterVolumeLevelScalar = value / 100f;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Console.Error.WriteLine($"Error setting volume: {ex.Message}");
+                // Console.Error.WriteLine("Error setting volume");
             }
         }
 
@@ -227,7 +227,7 @@ namespace AudioManager.Services
         {
             if (value < 0 || value > 100)
             {
-                Console.Error.WriteLine("Volume must be between 0 and 100");
+                // Console.Error.WriteLine("Volume must be between 0 and 100");
                 return;
             }
 
@@ -240,12 +240,12 @@ namespace AudioManager.Services
                 }
                 else
                 {
-                    Console.Error.WriteLine($"Device with ID {deviceId} not found");
+                    // Console.Error.WriteLine($"Device with ID {deviceId} not found");
                 }
             }
         }
 
-        private void NotifyChange(string changeType, string deviceId = "")
+        public void NotifyChange(string changeType, string deviceId = "")
         {
             var options = new JsonSerializerOptions
             {
@@ -309,7 +309,7 @@ namespace AudioManager.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error serializing JSON: {ex.Message}");
+                // Console.Error.WriteLine($"Error serializing JSON: {ex.Message}");
             }
         }
 
@@ -360,22 +360,27 @@ namespace AudioManager.Services
 
             if (device.AudioEndpointVolume != null)
             {
-                if (_listeners.TryGetValue(deviceId, out var existingHandler))
-                {
-                    device.AudioEndpointVolume.OnVolumeNotification -= existingHandler;
-                    _listeners.Remove(deviceId);
-                }
+                deviceInfo.Volume = (float)Math.Round(device.AudioEndpointVolume.MasterVolumeLevelScalar * 100);
+                    deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
 
-                deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
-                deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
+                    var handler = new AudioEndpointVolumeNotificationDelegate((data) =>
+                    {
+                        if (_devices.TryGetValue(device.ID, out var deviceInfo) && deviceInfo != null)
+                        {
+                            var volumeChanged = deviceInfo.Volume != Math.Round(data.MasterVolume * 100);
+                            var muteChanged = deviceInfo.IsMuted != data.Muted;
 
-                AudioEndpointVolumeNotificationDelegate handler = (data) => VolumeNotificationHandler(device.ID, data);
+                            if (volumeChanged || muteChanged)
+                            {
+                                deviceInfo.Volume = (float)Math.Round(data.MasterVolume * 100);
+                                deviceInfo.IsMuted = data.Muted;
+                                NotifyChange("VolumeChanged", device.ID);
+                            }
+                        }
+                    });
+
                 device.AudioEndpointVolume.OnVolumeNotification += handler;
-                _listeners[deviceId] = handler;
-
-                // AudioEndpointVolumeNotificationDelegate handler = (data) => VolumeNotificationHandler(device.ID, data);
-                // device.AudioEndpointVolume.OnVolumeNotification += handler;
-                // _volumeHandlers[deviceId] = handler;
+                _volumeNotificationDelegates[device.ID] = (handler, device.AudioEndpointVolume);
             }
 
             if (device.AudioClient != null && device.AudioClient.MixFormat != null)
@@ -396,27 +401,22 @@ namespace AudioManager.Services
         {
             lock (_lock)
             {
-                // if (_volumeHandlers.TryGetValue(deviceId, out var handler))
-                // {
-                //     var device = _enumerator.GetDevice(deviceId);
-                //     if (device?.AudioEndpointVolume != null)
-                //     {
-                //         device.AudioEndpointVolume.OnVolumeNotification -= handler;
-                //     }
-                //     _volumeHandlers.Remove(deviceId);
-                // }
-                if (_listeners.TryGetValue(deviceId, out var handler))
-                {
-                    var device = _enumerator.GetDevice(deviceId);
-                    if (device?.AudioEndpointVolume != null)
-                    {
-                        device.AudioEndpointVolume.OnVolumeNotification -= handler;
-                    }
-                    _listeners.Remove(deviceId);
-                    // volume.OnVolumeNotification -= (data) => { };
-                    // _listeners.Remove(deviceId);
+                // Console.WriteLine($"Removing device: {deviceId}");
 
+                if (_volumeNotificationDelegates.TryGetValue(deviceId, out var handlerPair))
+                {
+                    try
+                    {
+                        handlerPair.Volume.OnVolumeNotification -= handlerPair.Delegate;
+                        // Console.WriteLine("Successfully unsubscribed from volume notifications");
+                    }
+                    catch (Exception ex)
+                    {
+                        // Console.WriteLine($"Error during unsubscribe: {ex.Message}");
+                    }
+                    _volumeNotificationDelegates.Remove(deviceId);
                 }
+
                 _devices.Remove(deviceId);
                 NotifyChange("Removed", deviceId);
             }
@@ -469,15 +469,27 @@ namespace AudioManager.Services
 
                 if (device.AudioEndpointVolume != null)
                 {
-                    deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
+                    deviceInfo.Volume = (float)Math.Round(device.AudioEndpointVolume.MasterVolumeLevelScalar * 100);
                     deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
 
-                    AudioEndpointVolumeNotificationDelegate handler = (data) => VolumeNotificationHandler(device.ID, data);
+                    var handler = new AudioEndpointVolumeNotificationDelegate((data) =>
+                    {
+                        if (_devices.TryGetValue(device.ID, out var deviceInfo) && deviceInfo != null)
+                        {
+                            var volumeChanged = deviceInfo.Volume != Math.Round(data.MasterVolume * 100);
+                            var muteChanged = deviceInfo.IsMuted != data.Muted;
+
+                            if (volumeChanged || muteChanged)
+                            {
+                                deviceInfo.Volume = (float)Math.Round(data.MasterVolume * 100);
+                                deviceInfo.IsMuted = data.Muted;
+                                NotifyChange("VolumeChanged", device.ID);
+                            }
+                        }
+                    });
+
                     device.AudioEndpointVolume.OnVolumeNotification += handler;
-                    _listeners[device.ID] = handler;
-                    // var volumeListener = device.AudioEndpointVolume;
-                    // volumeListener.OnVolumeNotification += (data) => VolumeNotificationHandler(device.ID, data);
-                    // _listeners[device.ID] = volumeListener;
+                    _volumeNotificationDelegates[device.ID] = (handler, device.AudioEndpointVolume);
                 }
 
                 if (device.AudioClient != null && device.AudioClient.MixFormat != null)
@@ -494,24 +506,22 @@ namespace AudioManager.Services
             }
             NotifyChange("Initial");
         }
-
-        private void VolumeNotificationHandler(string deviceId, AudioVolumeNotificationData e)
-        {
-            lock (_lock)
-            {
-                if (_devices.TryGetValue(deviceId, out var deviceInfo) && deviceInfo != null)
-                {
-                    deviceInfo.Volume = e.MasterVolume * 100;
-                    deviceInfo.IsMuted = e.Muted;
-                    NotifyChange("VolumeChanged", deviceId);
-                }
-            }
-        }
-
         public void Dispose()
         {
             lock (_lock)
             {
+                foreach (var (deviceId, handlerPair) in _volumeNotificationDelegates.ToList())
+                {
+                    try
+                    {
+                        handlerPair.Volume.OnVolumeNotification -= handlerPair.Delegate;
+                    }
+                    catch (Exception ex)
+                    {
+                        // Console.WriteLine($"Error during dispose unsubscribe for device {deviceId}: {ex.Message}");
+                    }
+                }
+                _volumeNotificationDelegates.Clear();
                 _devices.Clear();
                 _enumerator.UnregisterEndpointNotificationCallback(this);
             }
