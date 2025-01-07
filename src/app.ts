@@ -7,7 +7,6 @@ export interface AudioMonitorOptions {
   autoStart: boolean;
 }
 
-// Определяем интерфейсы для данных устройств
 interface AudioDevice {
   id: string;
   name: string;
