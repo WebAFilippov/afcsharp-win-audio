@@ -15,7 +15,7 @@ namespace AudioManager.Services
     {
         private readonly MMDeviceEnumerator _enumerator = new();
         private readonly Dictionary<string, AudioDeviceInfo> _devices = new();
-        private readonly Dictionary<string, AudioEndpointVolume> _listeners = new();
+        private readonly Dictionary<string, AudioEndpointVolumeNotificationDelegate> _listeners = new();
         private readonly object _lock = new();
         private float _stepVolume = 2f;
 
@@ -360,13 +360,18 @@ namespace AudioManager.Services
 
             if (device.AudioEndpointVolume != null)
             {
+                if (_listeners.TryGetValue(deviceId, out var existingHandler))
+                {
+                    device.AudioEndpointVolume.OnVolumeNotification -= existingHandler;
+                    _listeners.Remove(deviceId);
+                }
+
                 deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
                 deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
 
-                var volumeListener = device.AudioEndpointVolume;
-                volumeListener.OnVolumeNotification += (data) => VolumeNotificationHandler(device.ID, data);
-                // device.AudioEndpointVolume.OnVolumeNotification += volumeListener;
-                _listeners[device.ID] = volumeListener;
+                AudioEndpointVolumeNotificationDelegate handler = (data) => VolumeNotificationHandler(device.ID, data);
+                device.AudioEndpointVolume.OnVolumeNotification += handler;
+                _listeners[deviceId] = handler;
 
                 // AudioEndpointVolumeNotificationDelegate handler = (data) => VolumeNotificationHandler(device.ID, data);
                 // device.AudioEndpointVolume.OnVolumeNotification += handler;
@@ -400,12 +405,17 @@ namespace AudioManager.Services
                 //     }
                 //     _volumeHandlers.Remove(deviceId);
                 // }
-                if (_listeners.TryGetValue(deviceId, out var volume))
+                if (_listeners.TryGetValue(deviceId, out var handler))
                 {
-                    // Отписываемся от события
-                    volume.OnVolumeNotification -= (data) => { };
+                    var device = _enumerator.GetDevice(deviceId);
+                    if (device?.AudioEndpointVolume != null)
+                    {
+                        device.AudioEndpointVolume.OnVolumeNotification -= handler;
+                    }
                     _listeners.Remove(deviceId);
-                    Console.WriteLine($"Слушатель удален для устройства: {deviceId}");
+                    // volume.OnVolumeNotification -= (data) => { };
+                    // _listeners.Remove(deviceId);
+
                 }
                 _devices.Remove(deviceId);
                 NotifyChange("Removed", deviceId);
@@ -462,9 +472,12 @@ namespace AudioManager.Services
                     deviceInfo.Volume = device.AudioEndpointVolume.MasterVolumeLevelScalar * 100;
                     deviceInfo.IsMuted = device.AudioEndpointVolume.Mute;
 
-                    var volumeListener = device.AudioEndpointVolume;
-                    volumeListener.OnVolumeNotification += (data) => VolumeNotificationHandler(device.ID, data);
-                    _listeners[device.ID] = volumeListener;
+                    AudioEndpointVolumeNotificationDelegate handler = (data) => VolumeNotificationHandler(device.ID, data);
+                    device.AudioEndpointVolume.OnVolumeNotification += handler;
+                    _listeners[device.ID] = handler;
+                    // var volumeListener = device.AudioEndpointVolume;
+                    // volumeListener.OnVolumeNotification += (data) => VolumeNotificationHandler(device.ID, data);
+                    // _listeners[device.ID] = volumeListener;
                 }
 
                 if (device.AudioClient != null && device.AudioClient.MixFormat != null)
@@ -498,7 +511,7 @@ namespace AudioManager.Services
         public void Dispose()
         {
             lock (_lock)
-            {               
+            {
                 _devices.Clear();
                 _enumerator.UnregisterEndpointNotificationCallback(this);
             }
