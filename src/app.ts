@@ -32,7 +32,7 @@ interface ActionDevice {
 }
 
 interface AudioAction {
-  type: 'Initial' | 'Added' | 'Removed' | 'DefaultChanged' | 'VolumeChanged';
+  type: 'initial' | 'add' | 'remove' | 'default' | 'volume';
   device?: ActionDevice;
 }
 
@@ -277,15 +277,4 @@ class AudioMonitor extends EventEmitter {
   }
 }
 
-const monitor = new AudioMonitor()
-
-monitor.on('listen', (data) => {
-  const { devices, action } = data
-
-  console.log(devices)
-  console.log(action)
-})
-
-
-
-
+export default AudioMonitor
